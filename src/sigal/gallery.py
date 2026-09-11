@@ -61,7 +61,7 @@ from click import progressbar
 from natsort import natsort_keygen, ns
 from PIL import Image as PILImage
 
-from . import image, signals, video
+from . import image, motion_photo, signals, video
 from .image import (
     EXIF_EXTENSIONS,
     get_exif_tags,
@@ -370,6 +370,77 @@ class Image(Media):
     def has_location(self):
         """True if location information is available for EXIF GPSInfo."""
         return self.exif is not None and "gps" in self.exif
+
+    @cached_property
+    def is_motion_photo(self):
+        """True if this image contains or is associated with a motion photo / motion picture video."""
+        if not self.settings.get("motion_photos", True):
+            return False
+        # 1. Check markdown metadata
+        if "motion_video" in self.meta or "motion_photo" in self.meta:
+            return True
+        # 2. Check embedded motion photo
+        if motion_photo.is_motion_photo_file(self.src_path):
+            return True
+        # 3. Check paired video
+        if motion_photo.find_paired_motion_video(self.src_path):
+            return True
+        return False
+
+    @cached_property
+    def motion_video_filename(self):
+        """Filename of the motion video in the destination directory."""
+        if not self.is_motion_photo:
+            return None
+        return f"{self.basename}.motion.mp4"
+
+    @property
+    def motion_video_dst_path(self):
+        if not self.motion_video_filename:
+            return None
+        return join(self.settings["destination"], self.path, self.motion_video_filename)
+
+    @property
+    def motion_video_url(self):
+        if not self.motion_video_filename:
+            return None
+        return url_from_path(self.motion_video_filename)
+
+    def extract_motion_video(self, force=False):
+        """Extract or copy the motion video to the destination directory."""
+        if not self.is_motion_photo:
+            return False
+
+        dst_path = self.motion_video_dst_path
+        if not dst_path:
+            return False
+
+        if isfile(dst_path) and not force and os.path.getsize(dst_path) > 0:
+            return True
+
+        check_or_create_dir(os.path.dirname(dst_path))
+
+        # Check markdown metadata first
+        custom_video = self.meta.get("motion_video") or self.meta.get("motion_photo")
+        if custom_video:
+            if isinstance(custom_video, list):
+                custom_video = custom_video[0]
+            custom_path = join(os.path.dirname(self.src_path), custom_video)
+            if isfile(custom_path):
+                copy(custom_path, dst_path, symlink=self.settings.get("orig_link", False))
+                return True
+
+        # Check embedded motion photo
+        if motion_photo.extract_motion_video(self.src_path, dst_path, force=force):
+            return True
+
+        # Check paired video
+        paired = motion_photo.find_paired_motion_video(self.src_path)
+        if paired:
+            copy(paired, dst_path, symlink=self.settings.get("orig_link", False))
+            return True
+
+        return False
 
 
 class Video(Media):
@@ -907,6 +978,12 @@ class Album:
                         "album_url": self.relative_url(
                             os.path.join(m_path, self.settings["output_filename"])
                         ),
+                        "is_motion_photo": getattr(media, "is_motion_photo", False),
+                        "motion_video_url": self.relative_url(
+                            os.path.join(m_path, getattr(media, "motion_video_filename", ""))
+                        )
+                        if getattr(media, "is_motion_photo", False)
+                        else "",
                     }
                 )
             first_title = getattr(first, "title", getattr(first, "basename", ""))
@@ -1341,8 +1418,16 @@ class Gallery:
             if isfile(f.dst_path) and not should_reprocess_album(
                 album.path, album.name, force
             ):
-                self.logger.info("%s exists - skipping", f.dst_filename)
-                self.stats[f.type + "_skipped"] += 1
+                if (
+                    getattr(f, "is_motion_photo", False)
+                    and f.motion_video_dst_path
+                    and not isfile(f.motion_video_dst_path)
+                ):
+                    self.stats[f.type] += 1
+                    yield f
+                else:
+                    self.logger.info("%s exists - skipping", f.dst_filename)
+                    self.stats[f.type + "_skipped"] += 1
             else:
                 self.stats[f.type] += 1
                 yield f

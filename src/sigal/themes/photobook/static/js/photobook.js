@@ -104,6 +104,9 @@
 
         // Setup GPS link handlers
         setupGpsLinks();
+
+        // Setup motion photo buttons
+        setupMotionPhotoButtons();
     }
 
     /**
@@ -111,6 +114,7 @@
      */
     function switchView(view, outlineBtn, slidesBtn, bookBtn, outlineView, slidesView, bookView) {
         currentView = view;
+        pauseAllMotionVideos();
 
         // Hide all views
         outlineView.classList.remove('active');
@@ -145,6 +149,8 @@
         if (pageIndex < 0 || pageIndex >= pages.length) {
             return;
         }
+
+        pauseAllMotionVideos();
 
         // Hide all pages
         pages.forEach(function(page) {
@@ -219,6 +225,11 @@
                     break;
                 case 'End':
                     openMediaViewerAtIndex(viewerMediaData.length - 1);
+                    event.preventDefault();
+                    break;
+                case 'm':
+                case 'M':
+                    toggleViewerMotion();
                     event.preventDefault();
                     break;
             }
@@ -364,7 +375,9 @@
                 title: page.getAttribute('data-media-title') || 'Unknown',
                 filename: page.getAttribute('data-media-filename') || '',
                 description: description,
-                exif: exifData
+                exif: exifData,
+                isMotionPhoto: page.getAttribute('data-is-motion-photo') === 'true',
+                motionVideoUrl: page.getAttribute('data-motion-video-url') || ''
             };
         });
 
@@ -388,10 +401,15 @@
         const viewerClose = document.getElementById('viewer-close');
         const viewerPrevBtn = document.getElementById('viewer-prev');
         const viewerNextBtn = document.getElementById('viewer-next');
+        const viewerMotionBtn = document.getElementById('viewer-motion-btn');
         const mediaViewer = document.getElementById('media-viewer');
 
         if (viewerClose) {
             addClickHandler(viewerClose, closeMediaViewer);
+        }
+
+        if (viewerMotionBtn) {
+            addClickHandler(viewerMotionBtn, toggleViewerMotion);
         }
 
         if (viewerPrevBtn) {
@@ -445,6 +463,23 @@
         // Hide both and show appropriate one
         viewerImage.style.display = 'none';
         viewerVideo.style.display = 'none';
+
+        // Reset motion video in viewer
+        const viewerMotionVideo = document.getElementById('viewer-motion-video');
+        const viewerMotionBtn = document.getElementById('viewer-motion-btn');
+        if (viewerMotionVideo) {
+            viewerMotionVideo.pause();
+            viewerMotionVideo.style.display = 'none';
+            viewerMotionVideo.removeAttribute('data-src');
+        }
+        if (viewerMotionBtn) {
+            updateMotionButtonState(viewerMotionBtn, false);
+            if (media.type === 'image' && media.isMotionPhoto && media.motionVideoUrl) {
+                viewerMotionBtn.style.display = 'inline-flex';
+            } else {
+                viewerMotionBtn.style.display = 'none';
+            }
+        }
 
         // Update media display and viewer links
         const viewerImageLink = document.getElementById('viewer-image-link');
@@ -587,6 +622,15 @@
         if (mediaViewer) {
             mediaViewer.classList.remove('active');
         }
+        const viewerMotionVideo = document.getElementById('viewer-motion-video');
+        if (viewerMotionVideo) {
+            viewerMotionVideo.pause();
+            viewerMotionVideo.style.display = 'none';
+        }
+        const viewerMotionBtn = document.getElementById('viewer-motion-btn');
+        if (viewerMotionBtn) {
+            updateMotionButtonState(viewerMotionBtn, false);
+        }
         viewerOpen = false;
         document.body.style.overflow = '';
     }
@@ -607,6 +651,127 @@
         if (viewerCurrentIndex > 0) {
             openMediaViewerAtIndex(viewerCurrentIndex - 1);
         }
+    }
+
+    /**
+     * Update motion button UI state
+     */
+    function updateMotionButtonState(btn, isPlaying) {
+        if (!btn) return;
+        const playIcon = btn.querySelector('.motion-icon-play');
+        const pauseIcon = btn.querySelector('.motion-icon-pause');
+        const textElem = btn.querySelector('.motion-btn-text');
+
+        if (isPlaying) {
+            btn.classList.add('active');
+            if (playIcon) playIcon.style.display = 'none';
+            if (pauseIcon) pauseIcon.style.display = 'inline-block';
+            if (textElem) textElem.textContent = 'MOTION';
+            btn.setAttribute('title', 'Pause motion video');
+            btn.setAttribute('aria-label', 'Pause motion video');
+        } else {
+            btn.classList.remove('active');
+            if (playIcon) playIcon.style.display = 'inline-block';
+            if (pauseIcon) pauseIcon.style.display = 'none';
+            if (textElem) textElem.textContent = 'MOTION';
+            btn.setAttribute('title', 'Play motion video');
+            btn.setAttribute('aria-label', 'Play motion video');
+        }
+    }
+
+    /**
+     * Pause all playing motion videos across slides and book views
+     */
+    function pauseAllMotionVideos() {
+        document.querySelectorAll('.photobook-motion-video, .book-motion-video').forEach(function(video) {
+            if (!video.paused) {
+                video.pause();
+            }
+            video.style.display = 'none';
+        });
+        document.querySelectorAll('.photobook-image, .book-image').forEach(function(img) {
+            img.style.display = 'block';
+        });
+        document.querySelectorAll('.motion-photo-btn').forEach(function(btn) {
+            updateMotionButtonState(btn, false);
+        });
+    }
+
+    /**
+     * Toggle motion video playback in media viewer modal
+     */
+    function toggleViewerMotion() {
+        const media = viewerMediaData[viewerCurrentIndex];
+        if (!media || !media.isMotionPhoto || !media.motionVideoUrl) return;
+
+        const viewerImage = document.getElementById('viewer-image');
+        const viewerMotionVideo = document.getElementById('viewer-motion-video');
+        const viewerMotionBtn = document.getElementById('viewer-motion-btn');
+
+        if (!viewerMotionVideo || !viewerImage || !viewerMotionBtn) return;
+
+        if (!viewerMotionVideo.paused && viewerMotionVideo.style.display === 'block') {
+            // Currently playing -> pause and revert to image
+            viewerMotionVideo.pause();
+            viewerMotionVideo.style.display = 'none';
+            viewerImage.style.display = 'block';
+            updateMotionButtonState(viewerMotionBtn, false);
+        } else {
+            // Start playing motion video
+            if (viewerMotionVideo.getAttribute('data-src') !== media.motionVideoUrl) {
+                viewerMotionVideo.src = media.motionVideoUrl;
+                viewerMotionVideo.setAttribute('data-src', media.motionVideoUrl);
+                viewerMotionVideo.load();
+            }
+            viewerImage.style.display = 'none';
+            viewerMotionVideo.style.display = 'block';
+            viewerMotionVideo.currentTime = 0;
+            viewerMotionVideo.play().then(function() {
+                updateMotionButtonState(viewerMotionBtn, true);
+            }).catch(function(err) {
+                console.error('Error playing viewer motion video:', err);
+            });
+        }
+    }
+
+    /**
+     * Setup motion photo buttons on slides and book views
+     */
+    function setupMotionPhotoButtons() {
+        const motionButtons = document.querySelectorAll('.motion-photo-btn');
+        motionButtons.forEach(function(btn) {
+            addClickHandler(btn, function(e) {
+                if (e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                }
+                const parent = btn.closest('.photobook-media') || btn.closest('.book-media');
+                if (!parent) return;
+
+                const img = parent.querySelector('.photobook-image, .book-image');
+                const video = parent.querySelector('.photobook-motion-video, .book-motion-video');
+                if (!img || !video) return;
+
+                if (!video.paused && video.style.display === 'block') {
+                    // Pause and revert to image
+                    video.pause();
+                    video.style.display = 'none';
+                    img.style.display = 'block';
+                    updateMotionButtonState(btn, false);
+                } else {
+                    // Pause other videos and play this one
+                    pauseAllMotionVideos();
+                    img.style.display = 'none';
+                    video.style.display = 'block';
+                    video.currentTime = 0;
+                    video.play().then(function() {
+                        updateMotionButtonState(btn, true);
+                    }).catch(function(err) {
+                        console.error('Error playing motion video:', err);
+                    });
+                }
+            });
+        });
     }
 
     /**
@@ -685,6 +850,7 @@
         // Re-run setup to catch any elements that might have been missed
         setupMediaViewer();
         setupOutlineNavigation();
+        setupMotionPhotoButtons();
     });
 
 })();

@@ -70,6 +70,7 @@ _DEFAULT_CONFIG = {
     "map_height": "500px",
     "medias_sort_attr": "filename",
     "medias_sort_reverse": False,
+    "motion_photos": True,
     "mp4_options": ["-crf", "23", "-strict", "-2"],
     "mp4_options_second_pass": None,
     "orig_dir": "original",

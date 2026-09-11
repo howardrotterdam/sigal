@@ -1,3 +1,46 @@
+  ### Summary of Motion Photo / Motion Picture Support
+
+  I have implemented full support for detecting motion photos, extracting the embedded video during gallery generation, and providing a Google Photos-style motion button across
+  album views.
+  ──────
+  ### Key Features Implemented
+
+  1. Motion Photo Detection & Video Extraction (motion_photo.py)
+      • Google Camera Motion Photos: Supports both legacy (GCamera:MicroVideoOffset) and modern Container Directory (Container:Directory with Item:Length and
+      Item:Semantic="MotionPhoto") XMP metadata schemas.
+      • Samsung Motion Photos: Detects MotionPhoto_Data markers embedded before the MP4 stream.
+      • Generic / Appended MP4s: Identifies MP4 ftyp box signatures appended following JPEG EOI (0xFFD9).
+      • Paired / Live Photo Files: Automatically links paired <basename>.mp4 or <basename>.mov video files located alongside the photo.
+      • Markdown Metadata: Supports motion_video: <filename> overrides in <basename>.md.
+      • Zero Re-encoding Extraction: Streams the MP4 portion directly to <dst_dir>/<basename>.motion.mp4 without re-encoding overhead.
+  2. Core Integration & Settings
+      • Added motion_photos: True (default) to settings.py:76.
+      • Added gallery.py:487-506, gallery.py:518-525, and gallery.py:532-545.
+      • Incremental build aware: Reprocesses image assets if the extracted motion video is missing from the destination.
+      • Integrated into map marker items in Album.map_markers.
+  3. Google Photos-Style UI & Interaction
+      • Visual Design (style.css:1066-1155):
+          • Google Photos-style floating pill badge featuring the concentric motion ring / play icon and "MOTION" text.
+          • Active toggle styling with play/pause icon transitions and active highlight border.
+      • Slides & Book Views (album.html:52-71):
+          • Motion button overlaid on photo items. Clicking toggles seamless inline looped video playback on top of the still photo.
+      • Outline View:
+          • Motion photo badge displayed on thumbnail items.
+      • Media Viewer Modal (album.html:265-279 & photobook.js:547-596):
+          • Motion button in header bar.
+          • Pressing m toggles motion video playback in the modal.
+          • Video automatically pauses and resets when navigating or closing.
+      • Map & Other Themes:
+          • Added motion button & video player to location lightbox in map.html:187-198.
+          • Added data-motion-video attributes to album_items.html:16-18 and album.html:18-20 templates.
+
+  ──────
+  ### Verification
+
+  • Ran the complete test suite with pytest:
+      • 116 passed, 3 skipped (all 10 new motion photo tests passed in test_motion_photo.py).
+
+---
 Implemented an album-level travel map using GPS metadata, grouped markers, and a route line.
 
 ## What changed

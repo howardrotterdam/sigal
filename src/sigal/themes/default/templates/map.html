@@ -556,7 +556,7 @@
       card.className = 'loc-item-card';
       card.onclick = function() { openLocLightbox(itemIdx); };
 
-      var videoBadge = item.type === 'video' ? '<div class="loc-item-video-icon">&#9654;</div>' : '';
+      var videoBadge = item.type === 'video' ? '<div class="loc-item-video-icon">&#9654;</div>' : (item.is_motion_photo ? '<div class="loc-item-video-icon" title="Motion Photo">&#9678;</div>' : '');
 
       card.innerHTML = '<div class="loc-item-thumb-wrapper">' +
         '<img src="' + item.thumbnail + '" class="loc-item-thumb" alt="' + item.caption + '" />' +
@@ -617,6 +617,57 @@
       img.alt = item.caption;
       img.className = 'loc-lightbox-media';
       container.appendChild(img);
+
+      if (item.is_motion_photo && item.motion_video_url) {
+        var motionBtn = document.createElement('button');
+        motionBtn.className = 'motion-photo-btn';
+        motionBtn.setAttribute('title', 'Play motion photo');
+        motionBtn.style.position = 'absolute';
+        motionBtn.style.top = '16px';
+        motionBtn.style.left = '16px';
+        motionBtn.innerHTML = '<span class="motion-icon-wrapper">' +
+          '<svg class="motion-icon motion-icon-play" viewBox="0 0 24 24" width="20" height="20">' +
+          '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="4 2"/>' +
+          '<polygon points="10,8 16,12 10,16" fill="currentColor"/>' +
+          '</svg>' +
+          '<svg class="motion-icon motion-icon-pause" viewBox="0 0 24 24" width="20" height="20" style="display:none;">' +
+          '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>' +
+          '<rect x="9" y="8" width="2" height="8" rx="0.5" fill="currentColor"/>' +
+          '<rect x="13" y="8" width="2" height="8" rx="0.5" fill="currentColor"/>' +
+          '</svg>' +
+          '</span><span class="motion-btn-text">MOTION</span>';
+
+        var motionVideo = document.createElement('video');
+        motionVideo.src = item.motion_video_url;
+        motionVideo.loop = true;
+        motionVideo.muted = true;
+        motionVideo.playsInline = true;
+        motionVideo.className = 'loc-lightbox-media';
+        motionVideo.style.display = 'none';
+
+        motionBtn.onclick = function(e) {
+          e.stopPropagation();
+          if (!motionVideo.paused && motionVideo.style.display !== 'none') {
+            motionVideo.pause();
+            motionVideo.style.display = 'none';
+            img.style.display = 'block';
+            motionBtn.classList.remove('active');
+            motionBtn.querySelector('.motion-icon-play').style.display = 'inline-block';
+            motionBtn.querySelector('.motion-icon-pause').style.display = 'none';
+          } else {
+            img.style.display = 'none';
+            motionVideo.style.display = 'block';
+            motionVideo.play();
+            motionBtn.classList.add('active');
+            motionBtn.querySelector('.motion-icon-play').style.display = 'none';
+            motionBtn.querySelector('.motion-icon-pause').style.display = 'inline-block';
+          }
+        };
+
+        container.style.position = 'relative';
+        container.appendChild(motionVideo);
+        container.appendChild(motionBtn);
+      }
     }
 
     document.getElementById('loc-lightbox-caption').innerHTML =

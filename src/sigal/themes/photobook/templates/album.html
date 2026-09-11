@@ -21,9 +21,19 @@
   {% include 'map.html' %}
   <div class="outline-grid">
     {% for media in album.medias %}
-    <div class="outline-item" data-media-index="{{ loop.index0 }}">
+    <div class="outline-item" data-media-index="{{ loop.index0 }}" {% if media.is_motion_photo %}data-is-motion-photo="true"{% endif %}>
       {% if media.thumbnail %}
-      <img src="{{ media.thumbnail }}" alt="{{ media.title }}" class="outline-thumb" />
+      <div class="outline-thumb-wrap">
+        <img src="{{ media.thumbnail }}" alt="{{ media.title }}" class="outline-thumb" />
+        {% if media.is_motion_photo %}
+        <span class="outline-motion-badge" title="Motion Photo">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 2"/>
+            <polygon points="10,8 16,12 10,16"/>
+          </svg>
+        </span>
+        {% endif %}
+      </div>
       {% endif %}
       <div class="outline-caption">{{ media.title }}</div>
     </div>
@@ -35,11 +45,30 @@
 <div id="slides-view" class="photobook-view">
   <div class="photobook-pages" id="photobook-container">
     {% for media in album.medias %}
-    <div class="photobook-page" data-media-index="{{ loop.index0 }}" data-media-url="{{ media.url }}" data-media-type="{{ media.type }}" data-media-mime="{{ media.mime }}" data-media-title="{{ media.title }}" data-media-filename="{{ media.src_filename }}">
+    <div class="photobook-page" data-media-index="{{ loop.index0 }}" data-media-url="{{ media.url }}" data-media-type="{{ media.type }}" data-media-mime="{{ media.mime }}" data-media-title="{{ media.title }}" data-media-filename="{{ media.src_filename }}" {% if media.is_motion_photo %}data-is-motion-photo="true" data-motion-video-url="{{ media.motion_video_url }}"{% endif %}>
       <div class="photobook-page-content">
         <div class="photobook-media clickable-media" role="button" tabindex="0" aria-label="Click to open full size image">
           {% if media.type == "image" %}
             <img src="{{ media.url }}" alt="{{ media.title }}" class="photobook-image" />
+            {% if media.is_motion_photo %}
+              <video class="photobook-motion-video" preload="none" loop muted playsinline style="display:none;">
+                <source src="{{ media.motion_video_url }}" type="video/mp4" />
+              </video>
+              <button class="motion-photo-btn" aria-label="Play motion photo" title="Play motion photo" onclick="event.stopPropagation()">
+                <span class="motion-icon-wrapper">
+                  <svg class="motion-icon motion-icon-play" viewBox="0 0 24 24" width="20" height="20">
+                    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="4 2"/>
+                    <polygon points="10,8 16,12 10,16" fill="currentColor"/>
+                  </svg>
+                  <svg class="motion-icon motion-icon-pause" viewBox="0 0 24 24" width="20" height="20" style="display:none;">
+                    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                    <rect x="9" y="8" width="2" height="8" rx="0.5" fill="currentColor"/>
+                    <rect x="13" y="8" width="2" height="8" rx="0.5" fill="currentColor"/>
+                  </svg>
+                </span>
+                <span class="motion-btn-text">MOTION</span>
+              </button>
+            {% endif %}
           {% elif media.type == "video" %}
             <video controls class="photobook-video">
               <source src="{{ media.url }}" type="{{ media.mime }}" />
@@ -147,6 +176,25 @@
       <div class="book-media">
         {% if media.type == "image" %}
           <img src="{{ media.url }}" alt="{{ media.title }}" class="book-image" />
+          {% if media.is_motion_photo %}
+            <video class="book-motion-video" preload="none" loop muted playsinline style="display:none;">
+              <source src="{{ media.motion_video_url }}" type="video/mp4" />
+            </video>
+            <button class="motion-photo-btn" aria-label="Play motion photo" title="Play motion photo">
+              <span class="motion-icon-wrapper">
+                <svg class="motion-icon motion-icon-play" viewBox="0 0 24 24" width="20" height="20">
+                  <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="4 2"/>
+                  <polygon points="10,8 16,12 10,16" fill="currentColor"/>
+                </svg>
+                <svg class="motion-icon motion-icon-pause" viewBox="0 0 24 24" width="20" height="20" style="display:none;">
+                  <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                  <rect x="9" y="8" width="2" height="8" rx="0.5" fill="currentColor"/>
+                  <rect x="13" y="8" width="2" height="8" rx="0.5" fill="currentColor"/>
+                </svg>
+              </span>
+              <span class="motion-btn-text">MOTION</span>
+            </button>
+          {% endif %}
         {% elif media.type == "video" %}
           <video controls class="book-video">
             <source src="{{ media.url }}" type="{{ media.mime }}" />
@@ -214,11 +262,26 @@
 <div id="media-viewer" class="media-viewer">
   <div class="viewer-container">
     <button id="viewer-close" class="viewer-close" aria-label="Close viewer" title="Close (ESC)">&times;</button>
+    <button id="viewer-motion-btn" class="viewer-motion-btn" aria-label="Play motion photo" title="Play motion photo" style="display: none;">
+      <span class="motion-icon-wrapper">
+        <svg class="motion-icon motion-icon-play" viewBox="0 0 24 24" width="20" height="20">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="4 2"/>
+          <polygon points="10,8 16,12 10,16" fill="currentColor"/>
+        </svg>
+        <svg class="motion-icon motion-icon-pause" viewBox="0 0 24 24" width="20" height="20" style="display:none;">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <rect x="9" y="8" width="2" height="8" rx="0.5" fill="currentColor"/>
+          <rect x="13" y="8" width="2" height="8" rx="0.5" fill="currentColor"/>
+        </svg>
+      </span>
+      <span class="motion-btn-text">MOTION</span>
+    </button>
     
     <div class="viewer-content">
       <a id="viewer-image-link" href="#" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
         <img id="viewer-image" class="viewer-image" style="display: none;" alt="Full size image" />
       </a>
+      <video id="viewer-motion-video" class="viewer-motion-video" loop muted playsinline style="display: none;"></video>
       <video id="viewer-video" class="viewer-video" controls style="display: none;">
         <source id="viewer-video-source" />
         Your browser does not support the video tag.
