@@ -11,7 +11,7 @@
         photosPerPage: 1,  // Default photos per page (can be set in sigal config)
         enableKeyboard: true,
         enableOutlineClickNavigation: true,
-        mapProvider: 'openstreetmap'  // 'openstreetmap' or 'googlemaps'
+        mapProvider: 'googlemaps'  // 'openstreetmap' or 'googlemaps'
     };
 
     let currentPage = 0;
@@ -817,6 +817,10 @@
                 config.mapProvider = provider;
                 // Re-setup GPS links with new provider
                 setupGpsLinks();
+                // Update route map display tile layer if present
+                if (typeof window.setRouteMapProvider === 'function') {
+                    window.setRouteMapProvider(provider);
+                }
             }
         },
         getMapProvider: function() {

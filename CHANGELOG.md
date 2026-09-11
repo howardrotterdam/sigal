@@ -1,3 +1,28 @@
+  ### Fix Summary
+
+  The route map display now uses the map provider configured in settings.py:65 ("googlemaps" or "openstreetmap").
+  ──────
+  ### Changes Made
+
+  1. Route Map Tile Layer Integration (map.html:400-480)
+      • Replaced the hardcoded L.tileLayer.provider('{{ settings.leaflet_provider }}') with createTileLayers & setRouteMapProvider.
+      • When photobook_map_provider is set to "googlemaps" (default):
+          • Renders Google Maps tile layers (https://{s}.google.com/vt/lyrs=m...).
+          • Adds a layer control allowing users to switch between Google Streets, Satellite, Hybrid, and Terrain layers.
+      • When photobook_map_provider is set to "openstreetmap":
+          • Uses OpenStreetMap tiles (settings.leaflet_provider).
+      • Exposed window.setRouteMapProvider(provider) globally to allow runtime switching.
+      • In the location album modal, the external map link dynamically directs to Google Maps or OpenStreetMap based on the active provider.
+  2. JavaScript Map Provider Synchronization (photobook.js:14-824)
+      • Defaulted config.mapProvider to 'googlemaps' to align with settings.py and sigal.conf.py.
+      • Updated Photobook.setMapProvider(provider) to invoke window.setRouteMapProvider(provider) so calling Photobook.setMapProvider(...) updates the route map tiles live at
+      runtime.
+  3. Documentation & Tests
+      • Updated README.md:57-77 to reflect that photobook_map_provider controls both the route map display tiles and external GPS links.
+      • Added test_gallery.py:375-432 in tests/test_gallery.py verifying both "googlemaps" and "openstreetmap" outputs.
+      • Verified that all 120 tests pass in pytest.
+
+---
   I have updated the video conversion configuration to preserve the original video's highest resolution instead of downscaling it:
 
   ### Changes Made

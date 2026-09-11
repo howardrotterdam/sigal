@@ -402,7 +402,84 @@
       position: 'topleft'
     }
   });
-  L.tileLayer.provider('{{ settings.leaflet_provider }}').addTo(map);
+
+  var currentTileLayer = null;
+  var layerControl = null;
+
+  function createTileLayers(provider) {
+    var p = (provider || '').toLowerCase();
+    if (p === 'googlemaps' || p === 'google' || p === 'google_maps' || p === 'google-maps') {
+      var streets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '&copy; <a href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps</a>'
+      });
+      var satellite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '&copy; <a href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps</a>'
+      });
+      var hybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '&copy; <a href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps</a>'
+      });
+      var terrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        attribution: '&copy; <a href="https://www.google.com/maps" target="_blank" rel="noopener">Google Maps</a>'
+      });
+      return {
+        defaultLayer: streets,
+        baseMaps: {
+          "Google Streets": streets,
+          "Google Satellite": satellite,
+          "Google Hybrid": hybrid,
+          "Google Terrain": terrain
+        }
+      };
+    } else {
+      var osm;
+      try {
+        osm = L.tileLayer.provider('{{ settings.leaflet_provider }}');
+      } catch (e) {
+        osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+      }
+      return {
+        defaultLayer: osm,
+        baseMaps: {
+          "OpenStreetMap": osm
+        }
+      };
+    }
+  }
+
+  function setRouteMapProvider(provider) {
+    if (!map) return;
+    if (currentTileLayer) {
+      map.removeLayer(currentTileLayer);
+    }
+    if (layerControl) {
+      map.removeControl(layerControl);
+      layerControl = null;
+    }
+    var layers = createTileLayers(provider);
+    currentTileLayer = layers.defaultLayer;
+    currentTileLayer.addTo(map);
+
+    if (layers.baseMaps && Object.keys(layers.baseMaps).length > 1) {
+      layerControl = L.control.layers(layers.baseMaps, null, { position: 'topright' }).addTo(map);
+    }
+  }
+
+  window.setRouteMapProvider = setRouteMapProvider;
+  window.sigalMap = map;
+
+  var currentRouteMapProvider = "{{ settings.photobook_map_provider | default('googlemaps') }}";
+  setRouteMapProvider(currentRouteMapProvider);
 
   var markersData = [];
   {% for marker in album.map_markers %}
@@ -546,7 +623,15 @@
     currentMarkerItems = m.items || [];
     var dirInfo = m.next_direction ? ' • ➔ Heading ' + m.next_direction + ' (' + m.next_bearing + '°)' : '';
     document.getElementById('loc-modal-title').innerHTML = '<span style="color: #2563eb;">Stop #' + m.step + '</span> • ' + m.caption + dirInfo;
-    document.getElementById('loc-modal-subtitle').textContent = (m.datetime ? m.datetime + ' • ' : '') + m.count + ' photo(s)/video(s) taken at this location';
+    var activeProvider = (window.Photobook && window.Photobook.getMapProvider) ? window.Photobook.getMapProvider() : currentRouteMapProvider;
+    var isGoogle = (activeProvider || '').toLowerCase().indexOf('google') !== -1;
+    var extMapUrl = isGoogle
+      ? 'https://www.google.com/maps/search/' + m.lat + ',' + m.lng + '/@' + m.lat + ',' + m.lng + ',14z'
+      : 'https://www.openstreetmap.org/?mlat=' + m.lat + '&mlon=' + m.lng + '&zoom=14&layers=M';
+    var providerLabel = isGoogle ? 'Google Maps' : 'OpenStreetMap';
+    document.getElementById('loc-modal-subtitle').innerHTML = (m.datetime ? m.datetime + ' • ' : '') +
+      m.count + ' photo(s)/video(s) taken at this location • ' +
+      '<a href="' + extMapUrl + '" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline;">Open in ' + providerLabel + ' ↗</a>';
 
     var gridEl = document.getElementById('loc-modal-grid');
     gridEl.innerHTML = '';

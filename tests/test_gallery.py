@@ -372,6 +372,66 @@ def test_photobook_theme_renders_trip_map_feature(settings, tmp_path):
     assert '<div id="mapid"' in list_html
 
 
+def test_route_map_display_uses_photobook_map_provider(settings, tmp_path):
+    """Test that the route map display uses photobook_map_provider setting."""
+    settings["destination"] = str(tmp_path)
+    settings["theme"] = "photobook"
+    settings["show_map"] = True
+    settings["map_height"] = "200px"
+
+    album = SimpleNamespace(
+        title="Test album",
+        description="Test description",
+        dst_path=str(tmp_path),
+        index_url="./index.html",
+        show_map=True,
+        map_markers=[
+            {
+                "lat": 1.0,
+                "lon": 2.0,
+                "step": 1,
+                "count": 1,
+                "url": "thumb1.jpg",
+                "caption": "First",
+                "datetime": "2020-01-01",
+                "album_url": "./loc/index.html",
+                "next_direction": "NE",
+                "next_bearing": 45,
+                "items": [
+                    {
+                        "thumbnail": "thumb1.jpg",
+                        "caption": "First",
+                        "datetime": "2020-01-01",
+                        "album_url": "./loc/index.html",
+                        "type": "image",
+                    }
+                ],
+            }
+        ],
+        route=[{"lat": 1.0, "lon": 2.0}],
+        medias=[],
+    )
+
+    # Test with default googlemaps provider
+    settings["photobook_map_provider"] = "googlemaps"
+    writer = AlbumPageWriter(settings, index_title="Sigal test gallery")
+    html = writer.template.render(**writer.generate_context(album))
+    assert 'var currentRouteMapProvider = "googlemaps";' in html
+    assert "google.com/vt/lyrs=m" in html
+    assert "setRouteMapProvider(currentRouteMapProvider);" in html
+    assert "google.com/maps/search" in html
+    assert "'Google Maps'" in html
+
+    # Test with openstreetmap provider
+    settings["photobook_map_provider"] = "openstreetmap"
+    writer = AlbumPageWriter(settings, index_title="Sigal test gallery")
+    html_osm = writer.template.render(**writer.generate_context(album))
+    assert 'var currentRouteMapProvider = "openstreetmap";' in html_osm
+    assert "openstreetmap.org" in html_osm
+    assert "'OpenStreetMap'" in html_osm
+
+
+
 def test_photobook_theme_album_page_renders_map_with_sample_media(settings, tmp_path):
     from sigal.gallery import Image
 

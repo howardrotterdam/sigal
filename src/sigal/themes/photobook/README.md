@@ -54,24 +54,26 @@ photobook_show_exif = True
 # Show GPS coordinates (default: True)
 photobook_show_gps = True
 
-# Map provider for GPS coordinates (default: 'openstreetmap')
-# Options: 'openstreetmap' or 'googlemaps'
-photobook_map_provider = 'openstreetmap'
+# Map provider for GPS coordinates and route map display (default: 'googlemaps')
+# Options: 'googlemaps' or 'openstreetmap'
+photobook_map_provider = 'googlemaps'
 ```
 
 ## Configuration Details
 
 ### Map Provider
 
-The theme supports two map providers for GPS coordinates:
+The theme supports two map providers for GPS coordinates and route map display:
 
-- **OpenStreetMap** (default): Free, open-source mapping service
-  - Set: `photobook_map_provider = 'openstreetmap'`
-  - Links open to: `https://www.openstreetmap.org/`
-
-- **Google Maps**: Google's mapping service (requires internet access)
+- **Google Maps** (default): Google's mapping service (requires internet access)
   - Set: `photobook_map_provider = 'googlemaps'`
+  - Uses Google Maps tile layer (Streets, Satellite, Hybrid, Terrain) for the route map display
   - Links open to: `https://www.google.com/maps/`
+
+- **OpenStreetMap**: Free, open-source mapping service
+  - Set: `photobook_map_provider = 'openstreetmap'`
+  - Uses OpenStreetMap tile layer for the route map display
+  - Links open to: `https://www.openstreetmap.org/`
 
 You can also change it at runtime using JavaScript:
 
