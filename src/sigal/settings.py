@@ -101,7 +101,7 @@ _DEFAULT_CONFIG = {
     "video_extensions": [".3gp", ".avi", ".mkv", ".mov", ".mp4", ".ogv", ".webm"],
     "video_format": "webm",
     "video_always_convert": False,
-    "video_size": (480, 360),
+    "video_size": None,
     "watermark": "",
     "webm_options": ["-crf", "10", "-b:v", "1.6M", "-qmin", "4", "-qmax", "63"],
     "webm_options_second_pass": None,

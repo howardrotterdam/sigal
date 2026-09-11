@@ -1,3 +1,21 @@
+  I have updated the video conversion configuration to preserve the original video's highest resolution instead of downscaling it:
+
+  ### Changes Made
+
+  1. Default video_size set to None (settings.py:104)
+      • Changed the default video_size from (480, 360) to None.
+      • When converting video files (e.g. .mov, .avi, .mkv, .mp4) to browser-playable HTML5 formats (.mp4 / .webm), no downscaling filter is applied, keeping the video at its
+      highest original resolution (1080p, 4K, etc.).
+      • Explicit custom resolution resizing remains available if a user manually specifies video_size = (width, height) in their configuration.
+  2. Template & Documentation Updates
+      • Updated sigal.conf.py:214-216 to document that video_size = None is the default and preserves original resolution.
+      • Clarified behavior in getting_started.rst:22-25.
+  3. Automated Tests (test_video.py:125-159 & test_settings.py:14)
+      • Added test_video.py:125-128 to ensure video_size defaults to None.
+      • Added test_video.py:131-159 to test converting high-resolution videos to both .mp4 and .webm without reducing dimensions.
+      • All 119 tests pass cleanly in pytest.
+
+---
   ### Summary of Motion Photo / Motion Picture Support
 
   I have implemented full support for detecting motion photos, extracting the embedded video during gallery generation, and providing a Google Photos-style motion button across
